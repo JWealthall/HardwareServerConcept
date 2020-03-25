@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Line Display Server Example</title>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+</head>
+<body>
+    <script>
+        function Clear() {
+            RunGet('Clear');
+        }
+
+        function ClearMessage() {
+            $('#lblMessage').text('');
+            $('#lblMessage').removeClass('bg-success');
+            $('#lblMessage').removeClass('bg-danger');
+            $('#lblMessage').removeClass('bg-secondary');
+        }
+
+        function DisplayError(message) {
+            ClearMessage();
+            $('#lblMessage').addClass('bg-danger');
+            $('#lblMessage').text(message);
+        }
+
+        function DisplayRunning() {
+            ClearMessage();
+            $('#lblMessage').addClass('bg-secondary');
+            $('#lblMessage').text('Running ...');
+        }
+
+        function DisplaySuccess(message) {
+            ClearMessage();
+            $('#lblMessage').addClass('bg-success');
+            $('#lblMessage').text(message);
+        }
+
+        function RunGet(url) {
+            DisplayRunning();
+            $.ajax({
+                url: 'LineDisplay/' + url,
+                type: 'get',
+                timeout: 90000,
+                contentType: "application/json; charset=utf-8",
+                dataType: 'json',
+
+                success: function (data) {
+                    if (data.ok === true) {
+                        DisplaySuccess(data.message);
+                    } else {
+                        DisplayError("ERROR: " + data.message);
+                    }
+                },
+                error: function (data) {
+                    DisplayError("ERROR: " + data.status + " - " + data.statusText);
+                }
+            });
+        }
+
+        function RunPost(url, req) {
+            DisplayRunning();
+            $.ajax({
+                url: 'LineDisplay/' + url,
+                type: 'post',
+                timeout: 90000,
+                data: JSON.stringify(req),
+                contentType: "application/json; charset=utf-8",
+                dataType: 'json',
+
+                success: function (data) {
+                    if (data.ok === true) {
+                        DisplaySuccess(data.message);
+                    } else {
+                        DisplayError("ERROR: " + data.message);
+                    }
+                },
+                error: function (data) {
+                    DisplayError("ERROR: " + data.status + " - " + data.statusText);
+                }
+            });
+        }
+
+        function SendLines() {
+            $('input').removeClass('is-invalid');
+            var req = new Object();
+            req.Column = 0;
+            req.Row = 0;
+            var line0 = $('#inpLine0').val();
+            while (line0.length < 20) {
+                line0 = line0 + ' ';
+            }
+            var line1 = $('#inpLine1').val();
+            while (line1.length < 20) {
+                line1 = line1 + ' ';
+            }
+            req.Text = line0 + line1;
+            RunPost('Display', req);
+        }
+
+        function SendPaddedText() {
+            var req = new Object();
+            if (!ValidateText(req, true)) return;
+            RunPost('Display', req);
+        }
+
+        function SendText() {
+            var req = new Object();
+            if (!ValidateText(req, false)) return;
+            RunPost('Display', req);
+        }
+
+        function Test() {
+            RunGet('Test');
+        }
+
+        function ValidateText(req, padded) {
+            $('input').removeClass('is-invalid');
+            var hasError = false;
+
+            var text = $('#inpText').val();
+            if (padded) {
+                while (text.length < 40) {
+                    text = text + ' ';
+                }
+                req.Text = text;
+            } else {
+                if (text.length === 0) {
+                    $('#invText').text('Cannot be blank');
+                    $('#inpText').addClass('is-invalid');
+                    hasError = true;
+                }
+                req.Text = text;
+            }
+
+            var column = $('#inpColumn').val();
+            if (column.length !== 0) {
+                if (column.match(/^-{0,1}\d+$/)) {
+                    req.Column = parseInt(column);
+                } else {
+                    $('#invColumn').text('Not numeric');
+                    $('#inpColumn').addClass('is-invalid');
+                    hasError = true;
+                }
+            }
+
+            var row = $('#inpRow').val();
+            if (row.length !== 0) {
+                if (row.match(/^-{0,1}\d+$/)) {
+                    req.Row = parseInt(row);
+                } else {
+                    $('#invRow').text('Not numeric');
+                    $('#inpRow').addClass('is-invalid');
+                    hasError = true;
+                }
+            }
+            return !hasError;
+        }
+
+    </script>
+    <div class="container">
+        <div class="row justify-content-center">
+            <h1>Line Display Server Example</h1>
+        </div>
+        <div>
+            <div class="form-row">
+                <div class="form-group col-3">
+                    <button class="form-control btn btn-primary" onclick="Clear();">Clear Display</button>
+                </div>
+                <div class="form-group col-3">
+                    <button class="form-control btn btn-primary" onclick="Test();">Run Test</button>
+                </div>
+                <div class="w-100"></div>
+                <div class="form-group col-6">
+                    <label class="col-form-label">Text</label>
+                    <input id="inpText" type="text" class="form-control" maxlength="40" placeholder="Text to display">
+                    <div id="invText" class="invalid-feedback"></div>
+                </div>
+                <div class="form-group col-2">
+                    <label class="col-form-label">Column</label>
+                    <input id="inpColumn" type="text" class="form-control" maxlength="2" placeholder="0 to 19">
+                    <div id="invColumn" class="invalid-feedback"></div>
+                </div>
+                <div class="form-group col-2">
+                    <label class="col-form-label">Row</label>
+                    <input id="inpRow" type="text" class="form-control" maxlength="1" placeholder="0 to 1">
+                    <div id="invRow" class="invalid-feedback"></div>
+                </div>
+                <div class="w-100"></div>
+                <div class="form-group col-3">
+                    <button class="form-control btn btn-primary" onclick="SendText();">Send Text</button>
+                </div>
+                <div class="form-group col-3">
+                    <button class="form-control btn btn-primary" onclick="SendPaddedText();">Send Padded Text</button>
+                </div>
+                <div class="w-100"></div>
+                <div class="form-group col-3">
+                    <label class="col-form-label">Top Line</label>
+                    <input id="inpLine0" type="text" class="form-control" maxlength="20" placeholder="Top Line Text">
+                    <div id="invLine0" class="invalid-feedback"></div>
+                </div>
+                <div class="form-group col-3">
+                    <label class="col-form-label">Bottom Line</label>
+                    <input id="inpLine1" type="text" class="form-control" maxlength="20" placeholder="Bottom Line Text">
+                    <div id="invLine1" class="invalid-feedback"></div>
+                </div>
+                <div class="w-100"></div>
+                <div class="form-group col-3">
+                    <button class="form-control btn btn-primary" onclick="SendLines();">Send Lines</button>
+                </div>
+                <div class="form-group col-12">
+                    <label id="lblMessage" class="col-form-label text-white d-block px-2 rounded"></label>
+                </div>
+            </div>
+            <div class="jumbotron">
+                <p>
+                    <b><i>This is a working demonstration which writes to a line display which is on my desk</i></b>.
+                </p>
+                <p>
+                    This <b>Micro Service</b> allows a physical <b>Line Display</b> (also called a <b>Customer Display</b>) to be <b>accessed as a web service</b>.
+                    It's written in <b>.Net Core 3.1</b> and is part of a concept which would allow devices to be connected to web based applications running in a local browser on Windows, Linux or OSX.
+                    If the concept is extended further devices could include POS Printers, Cash Drawers, Line Displays, Barcode Scanners, Magnet Stripe Readers & NFC Readers.
+                </p>
+                <p>
+                    The concept has been tested against an <b>Epson DM-D102</b>.
+                    It's part of a 20 year old <b>TM-H5000II</b> which includes a <b>TM-T88II</b> thermal receipt printer and an impact slip printer.
+                    All work perfectly - which shows just how rugged they are.
+                    This will work with any modern Epson line display which supports <b>ESC/POS</b> commands.
+                </p>
+                <p>
+                    Line Displays are generally 2 rows of 20 columns.
+                    In 35 years of developing Point Of Sale systems I have only every come across a couple which weren't.
+                    Clear information is a challenge with such limited space.
+                </p>
+                <p>
+                    This display will wrap onto the other line when characters are written to the last column. So writing 40 characters will always leave the row &amp; column back where they started.
+                </p>
+                <p>
+                    <b>Clear Display</b> clears all characters from the display and sets the current column and row to 0.
+                </p>
+                <p>
+                    <b>Run Test</b> cycles through a series of characters on the display.  This takes about 20 seconds to run and leaves the display showing '~' characters.  Current column and row end up as zero.
+                </p>
+                <p>
+                    <b>Send Text</b> will send from the Text field and display up to 40 characters from the position supplied by column and row (which are both optional).
+                    Current column and row end up in the position after the last character was written.
+                </p>
+                <p>
+                    <b>Send Padded Text</b> will send from the Text field padded (with spaces) to 40 characters and display from the position supplied by column and row (which are both optional).
+                    Current column and row end up in the position from where the first character was written.
+                </p>
+                <p>
+                    <b>Send Lines</b> will format and display the Top Line &amp; Bottom Line to 20 characters and display them from column and row 0.  Current column and row end up as zero.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
